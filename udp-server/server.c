@@ -1,13 +1,13 @@
 /*
-|-------------------------------------------------------------------|
-| HCMC University of Technology                                     |
-| Telecommunications Departments                                    |
-| Wireless Embedded Firmware for Final Thesis                       |
-| Version: 1.0                                                      |
-| Author: ng.sontung.1995@gmail.com                                 |
-| Date: 09/2017                                                     |
-| HW support in ISM band: CC2538                                    |
-|-------------------------------------------------------------------|*/
+|-----------------------------------------------------------------------------|
+| HCMC University of Technology                                     		  |
+| Telecommunications Departments                                    		  |
+| Wireless Embedded Firmware for Final Thesis                       		  |
+| Version: 1.0                                                      		  |
+| Author: ng.sontung.1995@gmail.com                                 		  |
+| Date: 09/2017                                                     		  |
+| HW support in ISM band: CC2538                                    		  |
+|-----------------------------------------------------------------------------|*/
 #include "my-include.h"
 #include "server.h"
 #include "util.h"
@@ -119,7 +119,8 @@ start_up(void)
 }
 /*---------------------------------------------------------------------------*/
 static void 
-send2bor_begin(uint8_t begin_cmd){
+send2bor_begin(uint8_t begin_cmd)
+{
   uint8_t i;
   uint8_t data[16];
   uint16_t hash_a, hash_b;  
@@ -206,9 +207,30 @@ tcpip_begin_handler(void)
     memcpy(buf, uip_appdata, MAX_LEN);
 
     for(i= 0; i< uip_datalen(); i++){ 
-      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+      //PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
       buf[i] = (uint8_t) (buf[i]&0xff);
     }
+
+    for(i=0; i<8; i++){
+      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+    }
+    PRINTF("\r\n");
+    for(i=8; i<24; i++){
+      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+    }
+    PRINTF("\r\n");
+    for(i=24; i<40; i++){
+      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+    }
+    PRINTF("\r\n");
+    for(i=40; i<56; i++){
+      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+    }
+    PRINTF("\r\n");
+    for(i=56; i<64; i++){
+      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+    }
+    PRINTF("\r\n");
 
     AES128_ECB_decrypt((uint8_t*) &buf[8], (const uint8_t*) key_begin, \
                                 (uint8_t *) &buf[8]);
@@ -218,14 +240,14 @@ tcpip_begin_handler(void)
       //PRINTF_DATA(&receive);
       switch (receive.cmd){
         case REQUEST_HASH:
-          PRINTF("____receive msg REQUEST_HASH_____");
+          PRINTF("____receive msg__REQUEST_HASH_____\n");
           begin_cmd = REPLY_HASH;
           done = 1 ;
           break;
 
         case JOIN_SUCCESS:
           memcpy(&key_normal[0], &receive.payload_data[0], 16);
-          PRINTF("__Recieve_Msg__JOIN SUCCESS_________");
+          PRINTF("____recieve_msg__JOIN SUCCESS_________\n");
           state = STATE_NORMAL;
           done = 0 ;
           break;
