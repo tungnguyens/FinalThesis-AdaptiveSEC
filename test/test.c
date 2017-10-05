@@ -21,17 +21,15 @@
 #include <math.h>
 #include <string.h>
 
-/*-----------------------------------------------------------------|*/
-#define DEBUG   1
-#define ACCEPT	1
-#define	DENY	0
-/*-----------------------------------------------------------------|*/
 
+#define DEBUG 1
 #if DEBUG
 #define PRINTF(...)    printf(__VA_ARGS__)
 #else
 #define PRINTF(...)
 #endif
+
+#define TIMEOUT_PRINT_ALL 10
 
 
 /*-----------------------------------------------------------------|*/
@@ -51,8 +49,6 @@ static  char    rev_buffer_cpy[MAXBUF];
 
 static  int     port;
 
-#define LEN_CHAR_IPV6       26
-
 static  char    dst_ipv6addr[LEN_CHAR_IPV6];
 
 
@@ -62,9 +58,6 @@ static  char    arg[32];
 
 static frame_struct_t 	receive, send_device;
 static frame_struct_t 	*receive_ptr;
-
-static node_t  my_device[MAX_DEVICE + 1];
-static node_t  node_alt;
 
 static  time_t rawtime;
 static  time_t time_begin;
@@ -80,26 +73,19 @@ static  uint32_t  frame_counter;
 
 static  uint8_t   ipv6_new_des[16];
 
-static  uint8_t   my_device_pos;
+uint8_t   my_device_pos;
+node_t  my_device[MAX_DEVICE + 1];
+node_t  node_alt;
 
 
 /*-----------------------------------------------------------------|*/
 void init_main();
-
-uint8_t check_my_device_list(uint8_t *device_ipaddr);
-
-bool check_seq(uint32_t new_seq,uint32_t old_seq);
-
-bool checklist(uint8_t *device_ipaddr);
-
-bool checklist_my_device(uint8_t *device_ipaddr);
 
 void process_receive_data(frame_struct_t *receive);
 
 void process_begin(frame_struct_t *receive);
 
 /*-----------------------------------------------------------------|*/
-
 void init_main(){
     uint8_t i;
     for ( i = 0; i < MAX_DEVICE + 1; i++){
@@ -109,98 +95,14 @@ void init_main(){
         my_device[i].stt = i;
         my_device[i].type_device = 'S';
         my_device[i].connected = 'N';
+        my_device[i].authenticated = 'N';
         my_device[i].emergency = 'N';
     }
 }
-
-/*-----------------------------------------------------------------|*/
-
-bool check_statedata_rev (char *rev_buffer)
-{
-	uint8_t i,count=0;
-	for(i=56;i<62;i++){
-		if(rev_buffer[i]==0xffffffff){
-			count++;
-		}
-	}
-	if(count==6){
-		return STATE_BEGIN;
-	}
-	else{
-		return 0;
-	}
-}
-
-/*-----------------------------------------------------------------|*/
-
-bool check_seq(uint32_t new_seq,uint32_t old_seq){
-	if(new_seq<=old_seq)
-		return DENY;
-	else
-		return ACCEPT;
-}
-
-/*-----------------------------------------------------------------|*/
-bool checklist_my_device(uint8_t *device_ipaddr) 
-{ 
-    my_device_pos = check_my_device_list(device_ipaddr);
-    if(my_device_pos){
-        PRINTF("My device is the %d\n", my_device_pos);
-        copy_node2node(&my_device[my_device_pos], &node_alt);
-        return ACCEPT;
-    }      
-    else{
-        PRINTF("This is not my device\n");
-        return DENY;
-    }
-}
-
-/*-----------------------------------------------------------------|*/
-
-uint8_t check_my_device_list(uint8_t *device_ipaddr){
-    int c, i, j;
-    static uint8_t my_device_ipaddr[LEN_CHAR_IPV6];
-    static const char device[] = "device.txt";
-    FILE *device_list; 
-
-    memset(my_device_ipaddr, 0, LEN_CHAR_IPV6);
-
-    device_list = fopen ( device, "r" );
-
-    i=0; j=1;
-
-    if ( device_ipaddr != NULL ) {
-        while((c = fgetc(device_list)) != EOF) {
-            if (c != 0x0a){
-                my_device_ipaddr[i] = c;
-                //PRINTF("%c",my_device_ipaddr[i]);
-                i++;
-            }
-            else {  
-                i = 0;
-                //PRINTF("\nmy Device = %s\n", my_device_ipaddr);           
-                if(strcmp ( my_device_ipaddr, device_ipaddr) == 0){
-                    //PRINTF("vi tri Device = %d\n", j);
-                    fclose (device_list );
-                    return j;
-                }
-                j++;
-            }
-        }        
-        fclose (device_list );            
-    }
-    else {
-        perror ( device ); /* why didn't the file open? */
-        fclose ( device_list ); 
-    }
-    //PRINTF("Ko thuoc MyDevice list\n");
-    return 0;
-}
-
 /*-----------------------------------------------------------------|*/
 
 void process_receive_data(frame_struct_t *receive){
-
+    PRINTF("Trang thai: ");
     switch(receive->state){
 
         case STATE_BEGIN:
@@ -231,11 +133,18 @@ void process_begin(frame_struct_t *receive){
     memset(&data, 0, 16);
     switch (receive->cmd){
         case REQUEST_JOIN:
+            PRINTF("CMD = REQUEST_JOIN\n");
+            memset(&node_alt, 0, sizeof(node_t));
+            node_alt.emergency = 'N';            
             node_alt.num_receive = 0;
             node_alt.num_send = 0;
-            frame_counter = 0;
+            node_alt.emergency = 'N';
+            node_alt.num_emergency = 0;
+            node_alt.last_seq = receive->seq;
+
+            //frame_counter = 0;
             hash_a = gen_random_num();
-            PRINTF("hash_a = 0x%04x", hash_a);
+            PRINTF("Generate random: hash_a = 0x%04x\r\n cho ", hash_a);
             data[0] = (uint8_t )(hash_a & 0x00FF);
             data[1] = (uint8_t )((hash_a & 0xFF00)>>8);
             /*PRINTF("Truoc khi ma hoa:   ");
@@ -243,13 +152,14 @@ void process_begin(frame_struct_t *receive){
                 PRINTF("%02x ",data[i]);
             PRINTF("\r\n"); */
             prepare2send(&send_device, ipv6_bor, ipv6_new_des, \
-                                frame_counter, STATE_BEGIN, REQUEST_HASH, data);
+                                node_alt.num_send, STATE_BEGIN, REQUEST_HASH, data);
             AES128_ECB_encrypt(&send_device.payload_data[0], key_begin, &send_device.payload_data[0]);
             /*PRINTF("Sau khi ma hoa:   ");
             for(i = 0; i<16; i++)
                 PRINTF("%02x ",send_device.payload_data[i]);
             PRINTF("\r\n");*/
-            frame_counter++;
+            //frame_counter++;
+            //node_alt.num_send++;
             //send_packet(&send_device);
             sock = socket(PF_INET6, SOCK_DGRAM,0);
             memset(&sainfo, 0, sizeof(struct addrinfo));
@@ -278,23 +188,31 @@ void process_begin(frame_struct_t *receive){
             break;
 
         case REPLY_HASH:
+            node_alt.last_seq = receive->seq;
             hash_a = node_alt.challenge_code;
             hash_b = (uint16_t )receive->payload_data[0] | ((uint16_t )receive->payload_data[1]<<8);            
             //PRINTF("hash_a: %04x ----- hash_b:  %04x\r\n",hash_a, hash_b);
             if (hash_b == hash(hash_a)){
-                memcpy(&data[0], &key_begin, 16);
+                PRINTF("SUCCESS CHALLENGE CODE <<<<<<<<<<<<<\n");
+                //memcpy(&data[0], &key_begin, 16);
+                PRINTF("Generate key16 to %s !...\n Key = ", node_alt.ipv6_addr);
+                gen_random_key_128(data);
+                for(i=0; i<16; i++){
+                    PRINTF("%02x ",data[i]);
+                }
+                PRINTF("\r\n");
                 /*PRINTF("Truoc khi ma hoa:   ");
                 for(i = 0; i<16; i++)
                     PRINTF("%02x ",data[i]);
                 PRINTF("\r\n");*/
                 prepare2send(&send_device, ipv6_bor, ipv6_new_des, \
-                                frame_counter, STATE_BEGIN, JOIN_SUCCESS, data);
+                                node_alt.num_send, STATE_BEGIN, JOIN_SUCCESS, data);
                 AES128_ECB_encrypt(&send_device.payload_data[0], key_begin, &send_device.payload_data[0]);
                 /*PRINTF("Sau khi ma hoa:   ");
                 for( i = 0; i<16; i++)
                     PRINTF("%02x ", send_device.payload_data[i]);
                 PRINTF("\r\n");*/
-                frame_counter++; 
+                //frame_counter++; 
                 //PRINTF("__HERE___\r\n");          
                 //send_packet(&send_device);
                 sock = socket(PF_INET6, SOCK_DGRAM,0);
@@ -315,7 +233,7 @@ void process_begin(frame_struct_t *receive){
                 memcpy(&node_alt.last_data_receive, receive, MAX_LEN);
                 memcpy(&node_alt.last_data_send, &send_device, MAX_LEN);
                 node_alt.authenticated = 'Y';
-                memcpy(&node_alt.key[0], &key_begin[0], 16);
+                memcpy(&node_alt.key[0], data, 16);
                 /*------*/
                 shutdown(sock,2);
                 close(sock);
@@ -350,6 +268,8 @@ int main(void)
     unsigned char byte_array[16];
     struct sockaddr_in si_me, si_other;
     uint8_t device_ipaddr[LEN_CHAR_IPV6]; 
+
+    uint8_t print_count = 0;
 
     printf("main\n");
 
@@ -389,7 +309,7 @@ int main(void)
             printf(" RES = -1 ... ERROR\n");
         }
         else if (res == 0)   {
-            printf(" RES = 0 ... TIMEOUT\n");
+            printf("...\n");
         }
         else{
             rev_bytes = recvfrom((int)sock, rev_buffer, MAXBUF+MAXBUF, 0,(struct sockaddr *)(&rev_sin6), (socklen_t *) &rev_sin6);
@@ -398,18 +318,18 @@ int main(void)
             for (i = 0; i < rev_bytes; i++)
                 rev_buffer[i] = (uint8_t)(rev_buffer[i] & 0xff);
             //PRINTF("\r\n");
-            printf("Got (%d bytes):\n",rev_bytes);
+            time ( &rawtime );     
+            // printf("Da mat %.f seconds tu khi chay chuong trinh\n", seconds);
+            timeinfo = localtime ( &rawtime );
+            printf ( "Current local time and date: %s\n", asctime (timeinfo) ); 
+            printf("New DataComing...\nGot (%d bytes):\n",rev_bytes);
             if (rev_bytes<0) {
                 perror("Problem in recvfrom \n");
                 exit(1);
             }
             else if(rev_bytes == 64){
-                time ( &rawtime );
-     
-                // printf("Da mat %.f seconds tu khi chay chuong trinh\n", seconds);
-                timeinfo = localtime ( &rawtime );
-                printf ( "Current local time and date: %s\n", asctime (timeinfo) );            
-                //printf("Got (%d bytes):\n",rev_bytes);
+
+                PRINTF(" -- FROM -- ");
                 memcpy(&ipv6_new_des[0], &rev_sin6.sin6_addr, 16);            
                 ipv6_to_str_unexpanded(&device_ipaddr[0], &rev_sin6.sin6_addr);
                 device_ipaddr[25]='\0';
@@ -435,15 +355,21 @@ int main(void)
                     if(check_crc16(data_rev, MAXBUF)){//data_rev
                         PRINTF("CRC_true\n");      
                         parse_64(data_rev, &receive);//data_rev
+                        PRINTF("Data receive:\n");
                         PRINTF_DATA(&receive);
                         process_receive_data(&receive);
                         copy_node2node(&node_alt, &my_device[my_device_pos]);  
+                        PRINTF_DATA_NODE(&my_device[my_device_pos]);
                     }
                     else PRINTF("CRC_fall\n");             
                 }
             }
-            PRINTF("----------------------------------------------------------------\n");
+            PRINTF("----------------------------------------------------------------\n\n");
         }
+        if(print_count == TIMEOUT_PRINT_ALL) {
+            PRINT_ALL();
+            print_count = 0;
+        } else print_count++;
     }
     shutdown(sock, 2);
     close(sock); 

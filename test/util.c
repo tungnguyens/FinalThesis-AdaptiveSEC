@@ -40,6 +40,7 @@ bool check_crc16(uint8_t *data_p, unsigned short length)
     c0 = (uint8_t)(crc16_check & 0x00ff);
     c1 = (uint8_t)((crc16_check & 0xff00) >> 8);
 
+    PRINTF("Kiem tra crc ...\n");
     if( c0 == data_p[length -2] && c1 == data_p[length -1]){
         return true;
     }
@@ -178,31 +179,32 @@ void copy_node2node(node_t *node_scr, node_t *node_des){
 
 void PRINTF_DATA_NODE(node_t *node_id){
     uint8_t i;
-    PRINTF(">>>>>>>>>>>-------------------------------------------<<<<<<<<<<<\n");
-    PRINTF(">>>>>>>>>>>-------------------------------------------<<<<<<<<<<<\n");
-    PRINTF("Thu tu Device: %d\r\n", node_id->stt);
-    PRINTF("Device la: My Device\r\n");
-    PRINTF("IPv6 Address la: %s\r\n",node_id->ipv6_addr);
-    PRINTF("Trang thai Device: %c\r\n",node_id->connected);
-    PRINTF("so luong data da nhan: %d\r\n", node_id->num_receive);
-    PRINTF("so luong data da gui: %d\r\n", node_id->num_send);
-    PRINTF("so luong data khan cap: %d\r\n", node_id->num_emergency);
-    PRINTF("Last Data receive: \r\n");
+    PRINTF(">>>>>>>>>>>------------------------------------------<<<<<<<<<<<\n");
+    PRINTF(">>>>>>>>>>>------------------------------------------<<<<<<<<<<<\n");
+    PRINTF("1. Thu tu Device: %d\r\n", node_id->stt);
+    PRINTF("2. Device la: my Device\r\n");
+    PRINTF("3. IPv6 address la: %s\r\n",node_id->ipv6_addr);
+    PRINTF("4. Trang thai device: %c\r\n",node_id->connected);
+    PRINTF("5. So packet da nhan: %d\r\n", node_id->num_receive);
+    PRINTF("6. So packet da gui: %d\r\n", node_id->num_send);
+    PRINTF("7. So packet khan cap: %d\r\n", node_id->num_emergency);
+    PRINTF("8. Last seq receive: %d\r\n", node_id->last_seq);
+    PRINTF("9. Last packet receive: \r\n");
     PRINTF_DATA(&node_id->last_data_receive);
     PRINTF("\r\n");
-    PRINTF("Last Data send: \r\n");
+    PRINTF("10. Last packet send:  \r\n");
     PRINTF_DATA(&node_id->last_data_send);
     PRINTF("\r\n"); 
-    PRINTF("Challenge code: %04x",node_id->challenge_code);
+    PRINTF("11 .Challenge code: %04x",node_id->challenge_code);
     PRINTF("\r\n");
-    PRINTF("Vi tri: %02x\r\n", node_id->last_pos);
-    PRINTF("Xac thuc Device: %c\r\n",node_id->authenticated);
-    PRINTF("Key cung cap cho Device: ");
+    PRINTF("12. Vi tri: %02x\r\n", node_id->last_pos);
+    PRINTF("13. Xac thuc Device: %c\r\n",node_id->authenticated);
+    PRINTF("14. Key cung cap cho Device: \r\n\t");
     for (i = 0; i < 16; i++)
         PRINTF("%02x ",node_id->key[i]);
     PRINTF("\r\n");
-    PRINTF(">>>>>>>>>>>-------------------------------------------<<<<<<<<<<<\n");
-    PRINTF(">>>>>>>>>>>-------------------------------------------<<<<<<<<<<<\n");
+    PRINTF(">>>>>>>>>>>------------------------------------------<<<<<<<<<<<\n");
+    PRINTF(">>>>>>>>>>>------------------------------------------<<<<<<<<<<<\n");
 
 }
 
@@ -299,8 +301,8 @@ PRINTF_DATA(frame_struct_t *frame){
 		PRINTF(" %.2x ", frame->for_future[j]);
 	}
 
-	PRINTF("\ncrc16 = 0x%.4x\n\n", frame->crc);
-    PRINTF("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n\n");
+	PRINTF("\ncrc16 = 0x%.4x\n", frame->crc);
+    PRINTF("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n");
 }
 #else /* DEBUG */
 void 
@@ -309,3 +311,109 @@ PRINTF_DATA(frame_struct_t *frame){
 }
 #endif /* DEBUG */
 /*-----------------------------------------------------------------------------------*/
+bool checklist_my_device(uint8_t *device_ipaddr) 
+{ 
+    my_device_pos = check_my_device_list(device_ipaddr);
+    if(my_device_pos){
+        PRINTF("My device is the %d\n", my_device_pos);
+        copy_node2node(&my_device[my_device_pos], &node_alt);
+        //PRINTF_DATA_NODE(&node_alt);
+        return ACCEPT;
+    }      
+    else{
+        PRINTF("This is not my device\n");
+        return DENY;
+    }
+}
+/*-----------------------------------------------------------------------------------*/
+uint8_t check_my_device_list(uint8_t *device_ipaddr){
+    int c, i, j;
+    static uint8_t my_device_ipaddr[LEN_CHAR_IPV6];
+    static const char device[] = "device.txt";
+    FILE *device_list; 
+
+    memset(my_device_ipaddr, 0, LEN_CHAR_IPV6);
+
+    device_list = fopen ( device, "r" );
+
+    i=0; j=1;
+
+    if ( device_ipaddr != NULL ) {
+        while((c = fgetc(device_list)) != EOF) {
+            if (c != 0x0a){
+                my_device_ipaddr[i] = c;
+                //PRINTF("%c",my_device_ipaddr[i]);
+                i++;
+            }
+            else {  
+                i = 0;
+                //PRINTF("\nmy Device = %s\n", my_device_ipaddr);           
+                if(strcmp ( my_device_ipaddr, device_ipaddr) == 0){
+                    //PRINTF("vi tri Device = %d\n", j);
+                    fclose (device_list );
+                    return j;
+                }
+                j++;
+            }
+        }        
+        fclose (device_list );            
+    }
+    else {
+        perror ( device ); /* why didn't the file open? */
+        fclose ( device_list ); 
+    }
+    //PRINTF("Ko thuoc MyDevice list\n");
+    return 0;
+}
+/*-----------------------------------------------------------------------------------*/
+bool check_seq(uint32_t new_seq,uint32_t old_seq){
+    if(new_seq<=old_seq)
+        return DENY;
+    else
+        return ACCEPT;
+}
+/*-----------------------------------------------------------------------------------*/
+
+bool check_statedata_rev (char *rev_buffer)
+{
+    uint8_t i,count=0;
+    for(i=56;i<62;i++){
+        if(rev_buffer[i]==0xffffffff){
+            count++;
+        }
+    }
+    if(count==6){
+        return STATE_BEGIN;
+    }
+    else{
+        return 0;
+    }
+}
+/*-----------------------------------------------------------------------------------*/
+void PRINT_ALL()
+{
+    uint8_t i, j;
+    printf("|----|---------------------------|-----|-----|-----|-----|-----|-------|---------------------------------|\n");
+    printf("|node|       ipv6 address        | con/| num | num | num | last| chall |             key[16]             |\n");
+    printf("| id |  (prefix: aaaa::0/64)     | auth| send| recv| emer| seq | -code |              (hex)              |\n");
+    printf("|----|---------------------------|-----|-----|-----|-----|-----|-------|---------------------------------|\n");
+
+    for(i = 1; i < MAX_DEVICE + 1; i++){
+        printf("| %2d | %25s | %c/%c |%5d|%5d|%5d|%5d| 0x%04x| ",\
+                my_device[i].stt, \
+                my_device[i].ipv6_addr, \
+                my_device[i].connected, \
+                my_device[i].authenticated, \
+                my_device[i].num_send, \
+                my_device[i].num_receive, \
+                my_device[i].num_emergency, \
+                my_device[i].last_seq,\
+                my_device[i].challenge_code);
+        for(j=0; j<16; j++){
+            printf("%02x",my_device[i].key[j]);
+        }
+        printf("|\n");  
+
+    printf("|----|---------------------------|-----|-----|-----|-----|-----|-------|---------------------------------|\n");
+    }
+}

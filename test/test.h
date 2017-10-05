@@ -44,6 +44,8 @@ enum cmd { 	// begin cmd
 #define MAX_DEVICE 				9
 
 #define TIME_OUT				2
+
+#define LEN_CHAR_IPV6       26
 /*---------------------------------------------------------------------------*/
 //	sfd = 0x7E;
 //	len = 64;

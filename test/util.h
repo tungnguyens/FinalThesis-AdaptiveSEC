@@ -26,6 +26,11 @@ typedef enum { false, true } bool;
 #define PRINTF(...)
 #endif
 
+/*-----------------------------------------------------------------|*/
+#define ACCEPT	1
+#define	DENY	0
+/*-----------------------------------------------------------------|*/
+
 #define POLY 0x8408
 
 #define CBC 1
@@ -38,6 +43,11 @@ static uint8_t iv[16]  = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, \
 
                            
 static uint8_t key_begin[16] = "I<3U_Yori-Phuong";
+
+extern uint8_t   my_device_pos;
+
+extern node_t  my_device[MAX_DEVICE + 1];
+extern node_t  node_alt;
 
 unsigned short gen_crc16(uint8_t *data_p, unsigned short length);
 bool check_crc16(uint8_t *data_p, unsigned short length);
@@ -60,5 +70,11 @@ void PRINTF_DATA(frame_struct_t *frame);
 void decrypt_cbc(uint8_t* data_input, uint8_t* data_output, const uint8_t* key, const uint8_t* iv);
 void encrypt_cbc(uint8_t* data_input, uint8_t* data_output, const uint8_t* key, const uint8_t* iv);
 
+bool checklist_my_device(uint8_t *device_ipaddr);
+uint8_t check_my_device_list(uint8_t *device_ipaddr);
+
+bool check_seq(uint32_t new_seq,uint32_t old_seq);
+
+void PRINT_ALL();
 
 #endif /* UTIL_H_ */
