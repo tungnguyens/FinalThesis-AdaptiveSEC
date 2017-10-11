@@ -133,34 +133,43 @@ void process_begin(frame_struct_t *receive){
     memset(&data, 0, 16);
     switch (receive->cmd){
         case REQUEST_JOIN:
-            PRINTF("CMD = REQUEST_JOIN\n");
-            memset(&node_alt, 0, sizeof(node_t));
-            node_alt.emergency = 'N';            
-            node_alt.num_receive = 0;
-            node_alt.num_send = 0;
-            node_alt.emergency = 'N';
-            node_alt.num_emergency = 0;
             node_alt.last_seq = receive->seq;
+            //if(node_alt.connected == 'N' || node_alt.authenticated == 'Y'){
+                PRINTF("cmd = first time REQUEST_JOIN\n");
+                memset(&node_alt, 0, sizeof(node_t));
+                node_alt.emergency = 'N';            
+                node_alt.num_receive = 0;
+                node_alt.num_send = 0;
+                node_alt.emergency = 'N';
+                node_alt.num_emergency = 0;                
 
-            //frame_counter = 0;
-            hash_a = gen_random_num();
-            PRINTF("Generate random: hash_a = 0x%04x\r\n cho ", hash_a);
-            data[0] = (uint8_t )(hash_a & 0x00FF);
-            data[1] = (uint8_t )((hash_a & 0xFF00)>>8);
-            /*PRINTF("Truoc khi ma hoa:   ");
-            for( i = 0; i<16; i++)
-                PRINTF("%02x ",data[i]);
-            PRINTF("\r\n"); */
-            prepare2send(&send_device, ipv6_bor, ipv6_new_des, \
-                                node_alt.num_send, STATE_BEGIN, REQUEST_HASH, data);
-            AES128_ECB_encrypt(&send_device.payload_data[0], key_begin, &send_device.payload_data[0]);
-            /*PRINTF("Sau khi ma hoa:   ");
-            for(i = 0; i<16; i++)
-                PRINTF("%02x ",send_device.payload_data[i]);
-            PRINTF("\r\n");*/
-            //frame_counter++;
-            //node_alt.num_send++;
-            //send_packet(&send_device);
+                //frame_counter = 0;
+                hash_a = gen_random_num();
+                PRINTF("Generate random: hash_a = 0x%04x\r\n cho ", hash_a);
+                data[0] = (uint8_t )(hash_a & 0x00FF);
+                data[1] = (uint8_t )((hash_a & 0xFF00)>>8);
+                /*PRINTF("Truoc khi ma hoa:   ");
+                for( i = 0; i<16; i++)
+                    PRINTF("%02x ",data[i]);
+                PRINTF("\r\n"); */
+                prepare2send(&send_device, ipv6_bor, ipv6_new_des, \
+                                    node_alt.num_send, STATE_BEGIN, REQUEST_HASH, data);
+                AES128_ECB_encrypt(&send_device.payload_data[0], key_begin, &send_device.payload_data[0]);
+                /*PRINTF("Sau khi ma hoa:   ");
+                for(i = 0; i<16; i++)
+                    PRINTF("%02x ",send_device.payload_data[i]);
+                PRINTF("\r\n");*/
+                //frame_counter++;
+                //node_alt.num_send++;
+                //send_packet(&send_device);
+                
+            // }
+            // else {
+            //     PRINTF("cmd = duplicate REQUEST_JOIN\n");
+            //     memcpy(&send_device, &node_alt.last_data_send, MAX_LEN);
+            //     send_device.seq = node_alt.num_send; // cap nhat lai seq_send
+            // }
+
             sock = socket(PF_INET6, SOCK_DGRAM,0);
             memset(&sainfo, 0, sizeof(struct addrinfo));
             sainfo.ai_flags = 0;
@@ -189,55 +198,64 @@ void process_begin(frame_struct_t *receive){
 
         case REPLY_HASH:
             node_alt.last_seq = receive->seq;
-            hash_a = node_alt.challenge_code;
-            hash_b = (uint16_t )receive->payload_data[0] | ((uint16_t )receive->payload_data[1]<<8);            
-            //PRINTF("hash_a: %04x ----- hash_b:  %04x\r\n",hash_a, hash_b);
-            if (hash_b == hash(hash_a)){
-                PRINTF("SUCCESS CHALLENGE CODE <<<<<<<<<<<<<\n");
-                //memcpy(&data[0], &key_begin, 16);
-                PRINTF("Generate key16 to %s !...\n Key = ", node_alt.ipv6_addr);
-                gen_random_key_128(data);
-                for(i=0; i<16; i++){
-                    PRINTF("%02x ",data[i]);
+            if(node_alt.authenticated == 'N'){
+                PRINTF("cmd = first time REPLY_HASH\n");                
+                hash_a = node_alt.challenge_code;
+                hash_b = (uint16_t )receive->payload_data[0] | ((uint16_t )receive->payload_data[1]<<8);            
+                //PRINTF("hash_a: %04x ----- hash_b:  %04x\r\n",hash_a, hash_b);
+                if (hash_b == hash(hash_a)){
+                    PRINTF("SUCCESS CHALLENGE CODE <<<<<<<<<<<<<\n");
+                    //memcpy(&data[0], &key_begin, 16);
+                    PRINTF("Generate key16 to %s !...\n Key = ", node_alt.ipv6_addr);
+                    gen_random_key_128(data);
+                    for(i=0; i<16; i++){
+                        PRINTF("%02x ",data[i]);
+                    }
+                    PRINTF("\r\n");
+                    /*PRINTF("Truoc khi ma hoa:   ");
+                    for(i = 0; i<16; i++)
+                        PRINTF("%02x ",data[i]);
+                    PRINTF("\r\n");*/
+                    prepare2send(&send_device, ipv6_bor, ipv6_new_des, \
+                                    node_alt.num_send, STATE_BEGIN, JOIN_SUCCESS, data);
+                    AES128_ECB_encrypt(&send_device.payload_data[0], key_begin, &send_device.payload_data[0]);
+                    /*PRINTF("Sau khi ma hoa:   ");
+                    for( i = 0; i<16; i++)
+                        PRINTF("%02x ", send_device.payload_data[i]);
+                    PRINTF("\r\n");*/
+                    //frame_counter++; 
+                    //PRINTF("__HERE___\r\n");          
+                    //send_packet(&send_device);
                 }
-                PRINTF("\r\n");
-                /*PRINTF("Truoc khi ma hoa:   ");
-                for(i = 0; i<16; i++)
-                    PRINTF("%02x ",data[i]);
-                PRINTF("\r\n");*/
-                prepare2send(&send_device, ipv6_bor, ipv6_new_des, \
-                                node_alt.num_send, STATE_BEGIN, JOIN_SUCCESS, data);
-                AES128_ECB_encrypt(&send_device.payload_data[0], key_begin, &send_device.payload_data[0]);
-                /*PRINTF("Sau khi ma hoa:   ");
-                for( i = 0; i<16; i++)
-                    PRINTF("%02x ", send_device.payload_data[i]);
-                PRINTF("\r\n");*/
-                //frame_counter++; 
-                //PRINTF("__HERE___\r\n");          
-                //send_packet(&send_device);
-                sock = socket(PF_INET6, SOCK_DGRAM,0);
-                memset(&sainfo, 0, sizeof(struct addrinfo));
-                sainfo.ai_flags = 0;
-                sainfo.ai_family = PF_INET6;
-                sainfo.ai_socktype = SOCK_DGRAM;
-                sainfo.ai_protocol = IPPROTO_UDP;
-                ipv6_to_str_unexpanded(&dst_ipv6addr[0], &rev_sin6.sin6_addr);
-                //dst_ipv6addr[25] = '\0';
-                status = getaddrinfo(dst_ipv6addr, "3000", &sainfo, &psinfo);
-                status = sendto(sock, &send_device, sizeof(send_device), 0,\
-                            (struct sockaddr *)psinfo->ai_addr, sizeof(struct sockaddr_in6));
-
-                node_alt.num_receive++;
-                node_alt.num_send++;
-                memcpy(&node_alt.ipv6_addr[0], &dst_ipv6addr[0],  sizeof(node_alt.ipv6_addr));
-                memcpy(&node_alt.last_data_receive, receive, MAX_LEN);
-                memcpy(&node_alt.last_data_send, &send_device, MAX_LEN);
-                node_alt.authenticated = 'Y';
-                memcpy(&node_alt.key[0], data, 16);
-                /*------*/
-                shutdown(sock,2);
-                close(sock);
+                    
             }
+            else {
+                PRINTF("cmd = duplicate REPLY_HASH\n");
+                memcpy(&send_device, &node_alt.last_data_send, MAX_LEN);
+                send_device.seq = node_alt.num_send; // cap nhat lai seq_send
+            }
+            sock = socket(PF_INET6, SOCK_DGRAM,0);
+            memset(&sainfo, 0, sizeof(struct addrinfo));
+            sainfo.ai_flags = 0;
+            sainfo.ai_family = PF_INET6;
+            sainfo.ai_socktype = SOCK_DGRAM;
+            sainfo.ai_protocol = IPPROTO_UDP;
+            ipv6_to_str_unexpanded(&dst_ipv6addr[0], &rev_sin6.sin6_addr);
+            //dst_ipv6addr[25] = '\0';
+            status = getaddrinfo(dst_ipv6addr, "3000", &sainfo, &psinfo);
+            status = sendto(sock, &send_device, sizeof(send_device), 0,\
+                        (struct sockaddr *)psinfo->ai_addr, sizeof(struct sockaddr_in6));
+
+            node_alt.num_receive++;
+            node_alt.num_send++;
+            memcpy(&node_alt.ipv6_addr[0], &dst_ipv6addr[0],  sizeof(node_alt.ipv6_addr));
+            memcpy(&node_alt.last_data_receive, receive, MAX_LEN);
+            memcpy(&node_alt.last_data_send, &send_device, MAX_LEN);
+            node_alt.authenticated = 'Y';
+            memcpy(&node_alt.key[0], data, 16);
+            /*------*/
+            shutdown(sock,2);
+            close(sock);
             break;
 
         default:
