@@ -179,8 +179,10 @@ void process_begin(frame_struct_t *receive){
             ipv6_to_str_unexpanded(&dst_ipv6addr[0], &rev_sin6.sin6_addr);
 
             status = getaddrinfo(dst_ipv6addr, "3000", &sainfo, &psinfo);
+            printf("status getaddrinfo = %d  ___REQUEST_JOIN",status);
             status = sendto(sock, &send_device, sizeof(send_device), 0,\
                         (struct sockaddr *)psinfo->ai_addr, sizeof(struct sockaddr_in6));
+            printf("status sendto = %d  ___REQUEST_JOIN",status);
             
             node_alt.connected = 'Y';
             node_alt.num_receive++;
@@ -226,6 +228,7 @@ void process_begin(frame_struct_t *receive){
                     //frame_counter++; 
                     //PRINTF("__HERE___\r\n");          
                     //send_packet(&send_device);
+                    memcpy(&node_alt.key[0], data, 16);
                 }
                     
             }
@@ -243,16 +246,17 @@ void process_begin(frame_struct_t *receive){
             ipv6_to_str_unexpanded(&dst_ipv6addr[0], &rev_sin6.sin6_addr);
             //dst_ipv6addr[25] = '\0';
             status = getaddrinfo(dst_ipv6addr, "3000", &sainfo, &psinfo);
+            printf("status getaddrinfo = %d  REPLY_HASH",status);
             status = sendto(sock, &send_device, sizeof(send_device), 0,\
                         (struct sockaddr *)psinfo->ai_addr, sizeof(struct sockaddr_in6));
-
+            printf("status sendto = %d  REPLY_HASH",status);
             node_alt.num_receive++;
             node_alt.num_send++;
             memcpy(&node_alt.ipv6_addr[0], &dst_ipv6addr[0],  sizeof(node_alt.ipv6_addr));
             memcpy(&node_alt.last_data_receive, receive, MAX_LEN);
             memcpy(&node_alt.last_data_send, &send_device, MAX_LEN);
             node_alt.authenticated = 'Y';
-            memcpy(&node_alt.key[0], data, 16);
+            
             /*------*/
             shutdown(sock,2);
             close(sock);
