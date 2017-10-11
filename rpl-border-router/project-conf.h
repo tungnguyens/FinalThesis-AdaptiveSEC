@@ -31,7 +31,7 @@
 #ifndef PROJECT_ROUTER_CONF_H_
 #define PROJECT_ROUTER_CONF_H_
 
-#define TARGET_HAS_CC2592   0
+#define TARGET_HAS_CC2592   1
 #define USING_SKY			0
 
 #define MY_SEC_LVL 			7
@@ -139,9 +139,25 @@
 #define ADAPTIVESEC_CONF_DECORATED_FRAMER framer_802154
 
 /* disable TCP and UDP */
-#undef UIP_CONF_TCP
-#define UIP_CONF_TCP 	0
-#undef UIP_CONF_UDP
-#define UIP_CONF_UDP 	0
+// #undef UIP_CONF_TCP
+// #define UIP_CONF_TCP 	0
+// #undef UIP_CONF_UDP
+// #define UIP_CONF_UDP 	0
+
+
+//To enable the secrdc_driver add this to your project-conf.h:
+
+/* configure RADIO layer */
+#include "cpu/cc2538/dev/cc2538-rf-async-autoconf.h"
+
+/* configure RDC layer */
+#include "net/mac/contikimac/secrdc-autoconf.h"
+
+//If you like to use Practical On-The-fly Rejection (POTR), also add this to your project-conf.h:
+#include "net/llsec/adaptivesec/potr-autoconf.h"
+
+//Finally, to autoconfigure FRAMERs add:
+/* configure FRAMERs */
+#include "net/mac/contikimac/framer-autoconf.h"
 
 #endif /* PROJECT_ROUTER_CONF_H_ */
