@@ -259,18 +259,19 @@ tcpip_begin_handler(void)
   }  
 }
 /*---------------------------------------------------------------------------*/
-// static void
-// tcpip_normal_handler(void)
-// {
+static void
+tcpip_normal_handler(void)
+{
 
-//   PRINTF("__tcpip_normal_handler_\n");
-// }
+  PRINTF("__tcpip_normal_handler_\n");
+}
 
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_server, ev, data)                                         //
 { /*-------------------------------------------------------------------------*/
   static struct etimer et;
   static uint8_t rand_num;
+  uint8_t i;
   
 
   PROCESS_BEGIN();
@@ -317,15 +318,20 @@ PROCESS_THREAD(udp_server, ev, data)                                         //
   
   while(1){
     PROCESS_YIELD();
-    // if(etimer_expired(&et)){
-    //   send2bor();
-    //   rand_num = random_rand()%10 + 5;
-    //   PRINTF("random num = %d\n", rand_num);     
-    //   etimer_set(&et, rand_num * TIMEOUT);
-    // }
-    // else if(ev == tcpip_event){
-    //   tcpip_handler();
-    // }
+    if(etimer_expired(&et)){
+      //send2bor();
+      rand_num = random_rand()%10 + 5;
+      PRINTF("random num = %d\n", rand_num);     
+      etimer_set(&et, rand_num * TIMEOUT);
+      printf("My key [hex] = ");
+      for(i=0; i<16; i++){
+        printf("%02x ", key_normal[i]);
+      }
+      printf("\n");
+    }
+    else if(ev == tcpip_event){
+      tcpip_normal_handler();
+    }
   }
   
   PROCESS_END();

@@ -32,7 +32,7 @@
 #include "dev/leds.h"
 #include "net/rpl/rpl.h"
 
-#include "dev/my_leds.h"
+#include "my_leds.h"
 
 
 #endif /* MY_INCLUDE_H */
