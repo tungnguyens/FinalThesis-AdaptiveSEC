@@ -31,7 +31,7 @@
 #ifndef PROJECT_ROUTER_CONF_H_
 #define PROJECT_ROUTER_CONF_H_
 
-#define TARGET_HAS_CC2592   1
+#define TARGET_HAS_CC2592   0
 #define USING_SKY			0
 
 #define MY_SEC_LVL 			7
