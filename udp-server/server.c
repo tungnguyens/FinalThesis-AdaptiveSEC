@@ -39,19 +39,19 @@ static uint8_t begin_cmd;
 
 // Frame struct
 /* frame_struct_t ; */
-static frame_struct_t send;//, send_encrypted;
+static frame_struct_t send, send_encrypted;
 static frame_struct_t receive;//, receive_encrypted;
 
 static uint8_t key_begin[16] = "I<3U_Yori-Phuong";
 
 static uint8_t  key_normal[16];
 
-/*
+
 static  uint8_t iv[16] =   {0x00, 0x01, 0x02, 0x03, \
                             0x04, 0x05, 0x06, 0x07, \
                             0x08, 0x09, 0x0a, 0x0b, \
                             0x0c, 0x0d, 0x0e, 0x0f};   
-*/
+
 static  uint32_t frame_counter; 
 
 static uint8_t done = 0;
@@ -62,6 +62,7 @@ static void start_up(void);
 
 static void send2bor_begin(uint8_t begin_cmd);
 
+static void send2bor_normal(void);
 //static void send2bor(void);
 
 static void tcpip_begin_handler(void); 
@@ -164,6 +165,27 @@ send2bor_begin(uint8_t begin_cmd)
     default:
       break;
   }
+}
+/*---------------------------------------------------------------------------*/
+static void 
+send2bor_normal(void)
+{
+  uint8_t data[16];
+  //uint8_t data_encrypted[16];
+  PRINTF("__send2bor_normal_\n");
+
+  memcpy(&data[0], &key_normal[0], 16);
+  memset(&send, 0, sizeof(frame_struct_t));
+
+  prepare2send(&send, &my_ipaddr, &border_router_ipaddr, \
+                frame_counter, STATE_NORMAL, SEND_NORMAL, data);//data_encrypted);
+
+  encrypt_cbc((uint8_t *)&send, (uint8_t *)&send_encrypted, \
+              (const uint8_t *) key_normal, (uint8_t *)iv);
+
+  uip_udp_packet_send(ser2bor_conn, &send_encrypted, MAX_LEN);
+
+  frame_counter ++;
 }
 /*---------------------------------------------------------------------------*/
 /*
@@ -328,6 +350,7 @@ PROCESS_THREAD(udp_server, ev, data)                                         //
         printf("%02x ", key_normal[i]);
       }
       printf("\n");
+      send2bor_normal();
     }
     else if(ev == tcpip_event){
       tcpip_normal_handler();
