@@ -393,10 +393,13 @@ bool check_statedata_rev (char *rev_buffer)
 void PRINT_ALL()
 {
     uint8_t i, j;
-    printf("|----|---------------------------|-----|-----|-----|-----|-----|-------|---------------------------------|\n");
-    printf("|node|       ipv6 address        | con/| num | num | num | last| chall |             key[16]             |\n");
-    printf("| id |  (prefix: aaaa::0/64)     | auth| send| recv| emer| seq | -code |              (hex)              |\n");
-    printf("|----|---------------------------|-----|-----|-----|-----|-----|-------|---------------------------------|\n");
+    double total_rev = 0;
+    double total_last_seq = 0;
+
+    printf("|----|---------------------------|-----|-----|-----|-----|-----|-------|----------------------------------|---------------------------------|\n");
+    printf("|node|       ipv6 address        | con/| num | num | num | last| chall |             key[16]              |          Last time seen         |\n");
+    printf("| id |  (prefix: aaaa::0/64)     | auth| send| recv| emer| seq | -code |              (hex)               |              (GMT+7)            |\n");
+    printf("|----|---------------------------|-----|-----|-----|-----|-----|-------|----------------------------------|---------------------------------|\n");
 
     for(i = 1; i < MAX_DEVICE + 1; i++){
         printf("| %2d | %25s | %c/%c |%5d|%5d|%5d|%5d| 0x%04x| ",\
@@ -412,8 +415,15 @@ void PRINT_ALL()
         for(j=0; j<16; j++){
             printf("%02x",my_device[i].key[j]);
         }
-        printf("|\n");  
+        printf(" |     %.*s    |\n", 24, asctime (localtime ( &my_device[i].timer)));
 
-    printf("|----|---------------------------|-----|-----|-----|-----|-----|-------|---------------------------------|\n");
+    printf("|----|---------------------------|-----|-----|-----|-----|-----|-------|----------------------------------|---------------------------------|\n");
     }
+
+    for(i = 1; i < MAX_DEVICE + 1; i++){
+        total_rev = total_rev + (double) my_device[i].num_receive;
+        total_last_seq = total_last_seq + (double) my_device[i].last_seq;
+    }
+
+    printf("\n--- >>>>>>> PRR = %.0lf / %.0lf = %lf \n", total_rev, total_last_seq, total_rev/total_last_seq);
 }

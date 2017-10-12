@@ -85,6 +85,8 @@ void process_receive_data(frame_struct_t *receive);
 
 void process_begin(frame_struct_t *receive);
 
+void process_normal(frame_struct_t *receive);
+
 /*-----------------------------------------------------------------|*/
 void init_main(){
     uint8_t i;
@@ -111,6 +113,8 @@ void process_receive_data(frame_struct_t *receive){
 
             break;
         case STATE_NORMAL:
+            PRINTF("STATE_NORMAL\n");
+            process_normal(receive);
             //node_alt.emergency = 'N';
             //memcpy(&node_alt.last_data_receive, receive, MAX_LEN);
             //node_alt.num_receive++;
@@ -246,11 +250,14 @@ void process_begin(frame_struct_t *receive){
             ipv6_to_str_unexpanded(&dst_ipv6addr[0], &rev_sin6.sin6_addr);
             //dst_ipv6addr[25] = '\0';
             status = getaddrinfo(dst_ipv6addr, "3000", &sainfo, &psinfo);
-            printf("status getaddrinfo = %d  REPLY_HASH",status);
+            printf("status getaddrinfo = %d  REPLY_HASH\n",status);
             status = sendto(sock, &send_device, sizeof(send_device), 0,\
                         (struct sockaddr *)psinfo->ai_addr, sizeof(struct sockaddr_in6));
-            printf("status sendto = %d  REPLY_HASH",status);
-            node_alt.num_receive++;
+            printf("status sendto = %d  REPLY_HASH\n",status);
+            // ***************************************************************
+            // Tam thoi cho num_rev = last seq luc nay de tinh PRR
+            node_alt.num_receive = node_alt.last_seq; //node_alt.num_receive++;
+
             node_alt.num_send++;
             memcpy(&node_alt.ipv6_addr[0], &dst_ipv6addr[0],  sizeof(node_alt.ipv6_addr));
             memcpy(&node_alt.last_data_receive, receive, MAX_LEN);
@@ -266,6 +273,14 @@ void process_begin(frame_struct_t *receive){
             break;
     }
     
+}
+/*-----------------------------------------------------------------|*/
+void process_normal(frame_struct_t *receive)
+{
+    node_alt.last_seq = receive->seq;
+    node_alt.emergency = 'N';
+    memcpy(&node_alt.last_data_receive, receive, MAX_LEN);
+    node_alt.num_receive++;
 }
 
 /*-----------------------------------------------------------------|*/
@@ -340,8 +355,9 @@ int main(void)
             for (i = 0; i < rev_bytes; i++)
                 rev_buffer[i] = (uint8_t)(rev_buffer[i] & 0xff);
             //PRINTF("\r\n");
-            time ( &rawtime );     
-            // printf("Da mat %.f seconds tu khi chay chuong trinh\n", seconds);
+            time ( &rawtime );
+            double seconds = difftime(rawtime, time_begin);     
+            printf("Da mat %.f seconds tu khi chay chuong trinh\n", seconds);
             timeinfo = localtime ( &rawtime );
             printf ( "Current local time and date: %s\n", asctime (timeinfo) ); 
             printf("New DataComing...\nGot (%d bytes):\n",rev_bytes);
@@ -372,7 +388,7 @@ int main(void)
                         PRINTF("\r\n"); */
                     }
                     else{
-                        //decrypt_cbc((uint8_t *)rev_buffer, (uint8_t *)data_rev, &node_alt.key[0], iv);
+                        decrypt_cbc((uint8_t *)rev_buffer, (uint8_t *)data_rev, &node_alt.key[0], iv);
                     }   
                     if(check_crc16(data_rev, MAXBUF)){//data_rev
                         PRINTF("CRC_true\n");      
@@ -380,6 +396,7 @@ int main(void)
                         PRINTF("Data receive:\n");
                         PRINTF_DATA(&receive);
                         process_receive_data(&receive);
+                        node_alt.timer = rawtime;
                         copy_node2node(&node_alt, &my_device[my_device_pos]);  
                         PRINTF_DATA_NODE(&my_device[my_device_pos]);
                     }
