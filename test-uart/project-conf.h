@@ -118,6 +118,5 @@
 
 #define UART1_CONF_BAUD_RATE 		9600
 
-#define SERIAL_LINE_CONF_UART       0
 
 #endif /* PROJECT_CONF_H_ */
