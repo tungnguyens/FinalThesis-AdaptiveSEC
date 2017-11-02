@@ -4,6 +4,10 @@
 #define TARGET_HAS_CC2592   1
 #define USING_SKY			0
 
+/* Low Power Mode */
+#define LPM_CONF_ENABLE       		0		/**< Set to 0 to disable LPM entirely */
+#define LPM_CONF_MAX_PM       		0
+
 #define MY_SEC_LVL 			7
 
 #if USING_SKY
@@ -109,5 +113,9 @@
 //Finally, to autoconfigure FRAMERs add:
 /* configure FRAMERs */
 #include "net/mac/contikimac/framer-autoconf.h"
+
+#define UART0_CONF_BAUD_RATE 		9600
+
+#define SERIAL_LINE_CONF_UART       0
 
 #endif /* PROJECT_CONF_H_ */
