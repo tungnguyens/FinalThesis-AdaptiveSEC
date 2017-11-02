@@ -66,8 +66,14 @@ PROCESS(cc2538_uart_demo_process, "cc2538 uart demo");
 AUTOSTART_PROCESSES(&cc2538_uart_demo_process);
 /*---------------------------------------------------------------------------*/
 int uart0_callback(unsigned char c){
-  //uart_write_byte(0, c);
-  printf(" 0x%02x", c);
+  uart_write_byte(0, c);
+  //printf(" 0x%02x", c);
+  return 1;
+}
+/*---------------------------------------------------------------------------*/
+int uart1_callback(unsigned char c){
+  uart_write_byte(1, c);
+  //printf(" 0x%02x", c);
   return 1;
 }
 /*---------------------------------------------------------------------------*/
@@ -109,15 +115,16 @@ PROCESS_THREAD(cc2538_uart_demo_process, ev, data)
   static struct etimer et;
   PROCESS_BEGIN();
   uart_set_input(0, uart0_callback);
+  uart_set_input(1, uart1_callback);
 
   etimer_set(&et, TIMEOUT);
   while(1) {
     PROCESS_YIELD();
-	if(etimer_expired(&et)){
-		printf("\n Send to PZEM004T:\n");
-		timeout_handler();				
-		etimer_restart(&et);
-	}
+	// if(etimer_expired(&et)){
+	// 	printf("\n Send to PZEM004T:\n");
+	// 	timeout_handler();				
+	// 	etimer_restart(&et);
+	// }
   }
 
   PROCESS_END();
