@@ -191,6 +191,15 @@ uart0_send_bytes(const unsigned  char *s, unsigned int len) {
   unsigned int i;
   for (i = 0; i<len; i++) {
     uart_write_byte(0, (uint8_t) (*(s+i)));
-    }   
-   return 1;
+  }   
+  return 1;
+}
+/*--------------------------------------------------------------------------------*/ 
+unsigned int 
+uart1_send_bytes(const unsigned  char *s, unsigned int len) {
+  unsigned int i;
+  for (i = 0; i<len; i++) {
+    uart_write_byte(1, (uint8_t) (*(s+i)));
+  }   
+  return 1;
 }

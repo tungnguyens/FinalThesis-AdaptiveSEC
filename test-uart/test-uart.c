@@ -60,21 +60,54 @@
 #include "PZEM004T.h"
 
 #define TIMEOUT 3 * CLOCK_SECOND
+
+#define LEN_PZEM_RESP	7
+
+static unsigned char rx[LEN_PZEM_RESP];
+
+extern struct PZEM_t PZEM_data_t;
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 PROCESS(cc2538_uart_demo_process, "cc2538 uart demo");
 AUTOSTART_PROCESSES(&cc2538_uart_demo_process);
 /*---------------------------------------------------------------------------*/
 int uart0_callback(unsigned char c){
-  uart_write_byte(0, c);
-  //printf(" 0x%02x", c);
-  return 1;
+    uart_write_byte(0, c);
+    //printf(" 0x%02x", c);
+    return 1;
 }
 /*---------------------------------------------------------------------------*/
 int uart1_callback(unsigned char c){
-  uart_write_byte(1, c);
-  //printf(" 0x%02x", c);
-  return 1;
+    //uart_write_byte(1, c);
+  	//printf(" 0x%02x", c);
+  	static uint8_t i = 0;
+
+	if (i == LEN_PZEM_RESP-1){
+	    rx[i] = c;
+		printf(" 0x%02x", rx[i]);
+		i=0;
+		printf("\nrecv_from_PZEM\n");
+		if(recv_from_PZEM(rx) == PZEM_OK_VALUE){
+			printf("ok\n");
+		}
+		else {
+			printf("fail\n");
+		}
+		return 1;
+	}
+	else if(i>0){
+		rx[i] = c;
+		printf(" 0x%02x", rx[i]);
+		i++;
+		return 1;
+	}
+	if (is_PZEM_1st_byte(c)){
+  		rx[i] = c;
+  		printf(" 0x%02x", rx[i]);
+		i++;
+		return 1;
+	}
+	return 1;
 }
 /*---------------------------------------------------------------------------*/
 void timeout_handler(void){
@@ -112,22 +145,38 @@ void timeout_handler(void){
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(cc2538_uart_demo_process, ev, data)
 {
-  static struct etimer et;
-  PROCESS_BEGIN();
-  uart_set_input(0, uart0_callback);
-  uart_set_input(1, uart1_callback);
+	static struct etimer et;
+	uint8_t i;
+    PROCESS_BEGIN();
+    uart_set_input(0, uart0_callback);
+    uart_set_input(1, uart1_callback);
 
-  etimer_set(&et, TIMEOUT);
-  while(1) {
-    PROCESS_YIELD();
-	// if(etimer_expired(&et)){
-	// 	printf("\n Send to PZEM004T:\n");
-	// 	timeout_handler();				
-	// 	etimer_restart(&et);
-	// }
-  }
+    etimer_set(&et, TIMEOUT);
+    while(1) {
+        PROCESS_YIELD();
+		if(etimer_expired(&et)){
+			printf("\n Send to PZEM004T.\n");
+			timeout_handler();
+			printf(" PZEM_data_t: \n");
+			printf(" 1. Address: %d.%d.%d.%d\n", \
+					PZEM_data_t.addr[0], PZEM_data_t.addr[1], PZEM_data_t.addr[2], PZEM_data_t.addr[3]);
+			printf(" 2. Power_alarm: %d kW\n", PZEM_data_t.power_alarm);
+			printf(" 3. Voltage_x10: %d V\n", PZEM_data_t.voltage_x10);
+			printf(" 4. Current_x100: %d A\n", PZEM_data_t.current_x100);
+			printf(" 5. Power: %d W\n", PZEM_data_t.power);
+			printf(" 6. Energy: %ld Wh\n", PZEM_data_t.energy);
+			printf(" 7. Last_data_recv: ");
+			for(i=0; i<7; i++){
+				printf("0x%02x ",PZEM_data_t.last_data_recv[i]); 
+			}
+			printf("\n\n");
 
-  PROCESS_END();
+
+			etimer_restart(&et);
+		}
+	}
+
+	  PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
 /**
