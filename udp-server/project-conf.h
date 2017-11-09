@@ -3,10 +3,7 @@
 
 #define TARGET_HAS_CC2592   1
 #define USING_SKY			0
-
-/* Low Power Mode */
-#define LPM_CONF_ENABLE       		0		/**< Set to 0 to disable LPM entirely */
-#define LPM_CONF_MAX_PM       		0
+#define USING_UART1			1
 
 #define MY_SEC_LVL 			7
 
@@ -15,30 +12,17 @@
 #define AES_128_CONF aes_128_driver
 #endif /* USING_SKY */
 
+#define LPM_CONF_ENABLE       		0		/**< Set to 0 to disable LPM entirely */
+#define LPM_CONF_MAX_PM       		0
+
 
 #undef NETSTACK_CONF_RDC
 #define NETSTACK_CONF_RDC   contikimac_driver//nullrdc_driver //contikimac_driver //
 
-/*--------------------------------------------------------------------------------*/
-#define DEBUG_CC2538_RF		0
-#define DEBUG_NULLRDC		0 // chi DEBUG loi
-#define DEBUG_NONCORESEC	0
-#define DEBUG_FRAMER_802154 0
-#define DEBUG_MAC 			0
-#define DEBUG_CSMA 			0 // csma
-#define DEBUG_SICSLOWPAN	0 // vo nghia do PRINTF0
-/*--------------------------------------------------------------------------------*/
-
 #define IEEE802154_CONF_PANID		0xACBA
+#define CC2538_RF_CONF_AUTOACK 		1
 
 #define CC2538_RF_CONF_TX_POWER		0xFF	// +7dBm
-/*
-#if TARGET_HAS_CC2592
-#define CC2538_RF_CONF_CHANNEL    	26
-#else
-#define CC2538_RF_CONF_CHANNEL    	26
-#endif
-*/
 
 #ifndef WITH_NON_STORING
 #define WITH_NON_STORING 0 /* Set this to run with non-storing mode */
@@ -94,9 +78,6 @@
 #undef ADAPTIVESEC_CONF_DECORATED_FRAMER
 #define ADAPTIVESEC_CONF_DECORATED_FRAMER framer_802154
 
-/* disable TCP */
-// #undef UIP_CONF_TCP
-// #define UIP_CONF_TCP 0
 /*--------------------------------------------------------------------------------*/
 
 //To enable the secrdc_driver add this to your project-conf.h:
@@ -113,9 +94,5 @@
 //Finally, to autoconfigure FRAMERs add:
 /* configure FRAMERs */
 #include "net/mac/contikimac/framer-autoconf.h"
-
-#define UART0_CONF_BAUD_RATE 		9600
-
-#define SERIAL_LINE_CONF_UART       0
 
 #endif /* PROJECT_CONF_H_ */

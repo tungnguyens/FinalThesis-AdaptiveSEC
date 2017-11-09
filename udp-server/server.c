@@ -294,7 +294,9 @@ PROCESS_THREAD(udp_server, ev, data)                                         //
   static struct etimer et;
   static uint8_t rand_num;
   uint8_t i;
-  
+  static int stt_PA = 0;
+  static int stt_LNA = 0;
+  static int stt_HGM = 0;
 
   PROCESS_BEGIN();
   start_up();
@@ -309,7 +311,13 @@ PROCESS_THREAD(udp_server, ev, data)                                         //
   while(state == STATE_BEGIN){    
     if(begin_cmd == REQUEST_JOIN){
       if( done == 0 )
-        send2bor_begin(begin_cmd);
+        //send2bor_begin(begin_cmd);
+            stt_LNA = GPIO_READ_PIN(GPIO_C_BASE, 4);
+            stt_PA = GPIO_READ_PIN(GPIO_C_BASE, 8);
+            stt_HGM = GPIO_READ_PIN(GPIO_D_BASE, 4);
+            PRINTF("LNA = %d - %x \n", stt_LNA, stt_LNA);
+            PRINTF("PA = %d - %x \n", stt_PA, stt_PA);
+            PRINTF("HGM = %d - %x \n", stt_HGM, stt_HGM);
       PROCESS_YIELD();
       if(etimer_expired(&et)){        
         rand_num = random_rand()%5 + 1;
@@ -342,7 +350,7 @@ PROCESS_THREAD(udp_server, ev, data)                                         //
     PROCESS_YIELD();
     if(etimer_expired(&et)){
       //send2bor();
-      rand_num = random_rand()%10 + 5;
+      rand_num = random_rand()%5 + 1;
       PRINTF("random num = %d\n", rand_num);     
       etimer_set(&et, rand_num * TIMEOUT);
       printf("My key [hex] = ");
