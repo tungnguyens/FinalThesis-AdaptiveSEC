@@ -12,9 +12,17 @@
 #include "server.h"
 #include "util.h"
 #include "tiny_aes.h"
+/*---------------------------------------------------------------------------*/
+#include "PZEM004T.h"
 
+#define LEN_PZEM_RESP 7
+
+extern struct PZEM_t PZEM_data_t;
+static unsigned char rx[LEN_PZEM_RESP];
 /*---------------------------------------------------------------------------*/
 #define TIMEOUT         1 * CLOCK_SECOND
+#define TIMEOUT_NORMAL  15 * CLOCK_SECOND
+
 #define UIP_IP_BUF   ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 #define UIP_UDP_BUF  ((struct uip_udp_hdr *)&uip_buf[uip_l2_l3_hdr_len])
 
@@ -67,6 +75,12 @@ static void send2bor_normal(void);
 
 static void tcpip_begin_handler(void); 
 
+static void timeout_normal_handler(void);
+
+void relay_on(unsigned char relays);
+
+void relay_off(unsigned char relays);
+
 // static void tcpip_normal_handler(void);               
 /*---------------------------------------------------------------------------*/
 
@@ -85,6 +99,62 @@ static void get_radio_parameter(void) {
   PRINTF("TX power = %d\n", tx_pow);
 }
 */
+/*---------------------------------------------------------------------------*/
+void 
+relay_on(unsigned char relays)
+{
+  my_leds_off(relays);
+}
+
+/*---------------------------------------------------------------------------*/
+void 
+relay_off(unsigned char relays)
+{
+  my_leds_on(relays);
+}
+/*---------------------------------------------------------------------------*/
+int 
+uart0_callback(unsigned char c)
+{
+    uart_write_byte(0, c);
+    //printf(" 0x%02x", c);
+    return 1;
+}
+/*---------------------------------------------------------------------------*/
+int 
+uart1_callback(unsigned char c)
+{
+    //uart_write_byte(1, c);
+    //printf(" 0x%02x", c);
+    static uint8_t i = 0;
+
+  if (i == LEN_PZEM_RESP-1){
+      rx[i] = c;
+    printf(" 0x%02x", rx[i]);
+    i=0;
+    printf("\nrecv_from_PZEM\n");
+    if(recv_from_PZEM(rx) == PZEM_OK_VALUE){
+      printf("ok\n");
+    }
+    else {
+      printf("fail\n");
+    }
+    return 1;
+  }
+  else if(i>0){
+    rx[i] = c;
+    printf(" 0x%02x", rx[i]);
+    i++;
+    return 1;
+  }
+  if (is_PZEM_1st_byte(c)){
+      rx[i] = c;
+      printf(" 0x%02x", rx[i]);
+    i++;
+    return 1;
+  }
+  return 1;
+}
 /*---------------------------------------------------------------------------*/
 static void
 start_up(void)
@@ -284,23 +354,74 @@ tcpip_begin_handler(void)
 static void
 tcpip_normal_handler(void)
 {
-
   PRINTF("__tcpip_normal_handler_\n");
-}
 
+}
+/*---------------------------------------------------------------------------*/
+static void timeout_normal_handler(void)
+{
+  PRINTF("__timeout_normal_handler_\n");
+  static uint8_t count = 1;
+  uint8_t i;
+  printf(" PZEM_data_t: \n");
+  printf(" 1. Address: %d.%d.%d.%d\n", \
+     PZEM_data_t.addr[0], PZEM_data_t.addr[1], PZEM_data_t.addr[2], PZEM_data_t.addr[3]);
+  printf(" 2. Power_alarm: %d kW\n", PZEM_data_t.power_alarm);
+  printf(" 3. Voltage_x10: %d V\n", PZEM_data_t.voltage_x10);
+  printf(" 4. Current_x100: %d A\n", PZEM_data_t.current_x100);
+  printf(" 5. Power: %d W\n", PZEM_data_t.power);
+  printf(" 6. Energy: %ld Wh\n", PZEM_data_t.energy);
+  printf(" 7. Last_data_recv: ");
+  for(i=0; i<7; i++){
+   printf("0x%02x ",PZEM_data_t.last_data_recv[i]); 
+  }
+  switch(count){
+    case 1:
+      send_to_PZEM(PZEM_SET_ADDRESS);
+      count = 2;
+      break;
+    case 2:
+      send_to_PZEM(PZEM_POWER_ALARM); // THRESHOLD is defined in PZEM004T.h
+      count = 3;
+      break;
+    case 3:
+      send_to_PZEM(PZEM_VOLTAGE);
+      count = 4;
+      break;
+    case 4:
+      send_to_PZEM(PZEM_CURRENT);
+      count = 5;
+      break;
+    case 5:
+      send_to_PZEM(PZEM_POWER);
+      count = 6;
+      break;
+    case 6:
+      send_to_PZEM(PZEM_ENERGY);
+      count = 1;
+      break;
+    default:
+      //return PZEM_ERROR_VALUE;
+      break;
+  }
+}
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_server, ev, data)                                         //
 { /*-------------------------------------------------------------------------*/
   static struct etimer et;
   static uint8_t rand_num;
   uint8_t i;
-  static int stt_PA = 0;
-  static int stt_LNA = 0;
-  static int stt_HGM = 0;
+  static uint8_t  relay_count = 0;
+  // static int stt_PA = 0;
+  // static int stt_LNA = 0;
+  // static int stt_HGM = 0;
 
   PROCESS_BEGIN();
-  start_up();
 
+  uart_set_input(0, uart0_callback);
+  uart_set_input(1, uart1_callback);
+
+  start_up();
 
   //rand_num = random_rand()%10 + 1;
   //PRINTF("random num = %d\n", rand_num);
@@ -311,13 +432,13 @@ PROCESS_THREAD(udp_server, ev, data)                                         //
   while(state == STATE_BEGIN){    
     if(begin_cmd == REQUEST_JOIN){
       if( done == 0 )
-        //send2bor_begin(begin_cmd);
-            stt_LNA = GPIO_READ_PIN(GPIO_C_BASE, 4);
-            stt_PA = GPIO_READ_PIN(GPIO_C_BASE, 8);
-            stt_HGM = GPIO_READ_PIN(GPIO_D_BASE, 4);
-            PRINTF("LNA = %d - %x \n", stt_LNA, stt_LNA);
-            PRINTF("PA = %d - %x \n", stt_PA, stt_PA);
-            PRINTF("HGM = %d - %x \n", stt_HGM, stt_HGM);
+        send2bor_begin(begin_cmd);
+        // stt_LNA = GPIO_READ_PIN(GPIO_C_BASE, 4);
+        // stt_PA = GPIO_READ_PIN(GPIO_C_BASE, 8);
+        // stt_HGM = GPIO_READ_PIN(GPIO_D_BASE, 4);
+        // PRINTF("LNA = %d - %x \n", stt_LNA, stt_LNA);
+        // PRINTF("PA = %d - %x \n", stt_PA, stt_PA);
+        // PRINTF("HGM = %d - %x \n", stt_HGM, stt_HGM);
       PROCESS_YIELD();
       if(etimer_expired(&et)){        
         rand_num = random_rand()%5 + 1;
@@ -341,7 +462,7 @@ PROCESS_THREAD(udp_server, ev, data)                                         //
         tcpip_begin_handler();
         //done = 0;
       }
-    } 
+    }
   }
 
 
@@ -350,15 +471,36 @@ PROCESS_THREAD(udp_server, ev, data)                                         //
     PROCESS_YIELD();
     if(etimer_expired(&et)){
       //send2bor();
-      rand_num = random_rand()%5 + 1;
-      PRINTF("random num = %d\n", rand_num);     
-      etimer_set(&et, rand_num * TIMEOUT);
+      //rand_num = random_rand()%5 + 1;
+      //PRINTF("random num = %d\n", rand_num);     
+      etimer_set(&et, TIMEOUT_NORMAL);
       printf("My key [hex] = ");
       for(i=0; i<16; i++){
         printf("%02x ", key_normal[i]);
       }
       printf("\n");
       send2bor_normal();
+      timeout_normal_handler();
+
+
+
+      /////////////////////////////////////
+      if(relay_count%2 == 0){
+        printf("bat 2 relay\n");
+        relay_on(RELAY_1);
+      //   my_leds_off(RELAY_2);
+      //   my_leds_off(RELAY_3);
+      //   my_leds_off(RELAY_4);
+      }
+      else{
+        printf("tat 2 relay\n");
+        relay_off(RELAY_1);
+      //   my_leds_on(RELAY_2);
+      //   my_leds_on(RELAY_3);
+      //   my_leds_on(RELAY_4);
+      }
+      relay_count++;
+      ////////////////////////////////////
     }
     else if(ev == tcpip_event){
       tcpip_normal_handler();

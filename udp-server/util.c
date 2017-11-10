@@ -185,3 +185,22 @@ uint16_t hash(uint16_t a) {
   tem = (a^0xb55a4f09) ^ (tem>>16);
    return tem & 0xFFFF;
 }
+
+/*--------------------------------------------------------------------------------*/ 
+unsigned int 
+uart0_send_bytes(const unsigned  char *s, unsigned int len) {
+  unsigned int i;
+  for (i = 0; i<len; i++) {
+    uart_write_byte(0, (uint8_t) (*(s+i)));
+  }   
+  return 1;
+}
+/*--------------------------------------------------------------------------------*/ 
+unsigned int 
+uart1_send_bytes(const unsigned  char *s, unsigned int len) {
+  unsigned int i;
+  for (i = 0; i<len; i++) {
+    uart_write_byte(1, (uint8_t) (*(s+i)));
+  }   
+  return 1;
+}

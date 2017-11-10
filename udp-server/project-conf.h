@@ -5,6 +5,11 @@
 #define USING_SKY			0
 #define USING_UART1			1
 
+//#define UART0_CONF_BAUD_RATE 		9600
+#if USING_UART1
+#define UART1_CONF_BAUD_RATE 		9600
+#endif // USING_UART1
+
 #define MY_SEC_LVL 			7
 
 #if USING_SKY

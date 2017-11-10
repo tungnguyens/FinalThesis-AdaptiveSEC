@@ -23,6 +23,20 @@ my_leds_on(unsigned char leds)
 		case LEDS_BLUE:
 			GPIO_WRITE_PIN(GPIO_B_BASE, 2, 2);//2);
 			break;
+		///////////////////////////////////////////////////////
+		case RELAY_1:
+			GPIO_WRITE_PIN(GPIO_D_BASE, 1, 1);
+			break;
+		case RELAY_2:
+			GPIO_WRITE_PIN(GPIO_D_BASE, 2, 2);//2);
+			break;
+		case RELAY_3:
+			GPIO_WRITE_PIN(GPIO_D_BASE, 16, 16);
+			break;
+		case RELAY_4:
+			GPIO_WRITE_PIN(GPIO_D_BASE, 32, 32);//2);
+			break;
+		///////////////////////////////////////////////////////
 	}
 #else 
 	leds_on(leds);
@@ -46,6 +60,20 @@ my_leds_off(unsigned char leds)
 		case LEDS_BLUE:
 			GPIO_WRITE_PIN(GPIO_B_BASE, 2, 0);
 			break;
+		///////////////////////////////////////////////////////
+		case RELAY_1:
+			GPIO_WRITE_PIN(GPIO_D_BASE, 1, 0);
+			break;
+		case RELAY_2:
+			GPIO_WRITE_PIN(GPIO_D_BASE, 2, 0);//2);
+			break;
+		case RELAY_3:
+			GPIO_WRITE_PIN(GPIO_D_BASE, 16, 0);
+			break;
+		case RELAY_4:
+			GPIO_WRITE_PIN(GPIO_D_BASE, 32, 0);//2);
+			break;		
+		///////////////////////////////////////////////////////
 	}
 #else 
 	leds_off(leds);

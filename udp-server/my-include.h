@@ -20,6 +20,9 @@
 #include "lib/random.h"
 #include "random.h"
 
+#include "dev/uart.h"
+#include "dev/serial-line.h"
+
 #include "net/ip/uip.h"
 #include "net/ip/uip-udp-packet.h"
 

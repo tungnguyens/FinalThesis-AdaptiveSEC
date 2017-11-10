@@ -50,4 +50,7 @@ void prepare2send(frame_struct_t *send, uip_ipaddr_t *src_ipaddr, uip_ipaddr_t *
 
 void parse_64(uint8_t* data_64, frame_struct_t *receive);
 uint16_t hash(uint16_t a);
+
+unsigned int uart0_send_bytes(const unsigned  char *s, unsigned int len);
+unsigned int uart1_send_bytes(const unsigned  char *s, unsigned int len);
 #endif /* UTIL_H_ */
