@@ -38,6 +38,7 @@
 
 struct  pollfd fd;
 int     res;
+#define TIMEOUT_ACK 3000
 
 static  int     rev_bytes;
 static  struct  sockaddr_in6 rev_sin6;
@@ -90,11 +91,12 @@ int main(int argc, char* argv[])
     unsigned char byte_array[16];
     uint8_t data[16] = "I<3U_Yori-Phuong";
     int seq = 0;
+    //uint8_t device_ipaddr[LEN_CHAR_IPV6]; 
 
     sin6len = sizeof(struct sockaddr_in6);
 
     sprintf(buffer,"led_off");
-    port = 3000;
+    port = 3001;
     sprintf(dst_ipv6addr,"aaaa::212:7401:1:101");
 
     if(argc < 4) {
@@ -166,6 +168,60 @@ int main(int argc, char* argv[])
 
     printf("\nSend REQUEST (%d bytes encrypted) to [%s]:%s\n",status, dst_ipv6addr,str_port);
     printf(".......... done\n");
+
+    /*wait for a reply */
+    fd.fd = sock;
+    fd.events = POLLIN;
+    
+    res = poll(&fd, 1, TIMEOUT_ACK); 
+    if (res == -1) {
+        printf(" Error !!!\n");
+    }
+    else if (res == 0)   {
+        printf(" Wait ACK: timeout !!!\n");
+    }
+    else{
+        rev_bytes = recvfrom((int)sock, rev_buffer, MAXBUF, 0,(struct sockaddr *)(&rev_sin6), (socklen_t *) &rev_sin6len);
+        if (rev_bytes<0) {
+            perror("Problem in recvfrom \n");
+            exit(1);
+        }
+        else if(rev_bytes == 64){
+            printf("Got REPLY (%d bytes):\n",rev_bytes); 
+            PRINTF(" -- FROM -- ");        
+            
+            memcpy(data_rev, rev_buffer, 64);
+            /*PRINTF("Truoc khi giai ma:   ");
+            for( i = 0; i<16; i++)
+                PRINTF("%02x ",data_rev[8+i]);
+            PRINTF("\r\n"); */
+            decrypt_cbc((uint8_t *)rev_buffer, (uint8_t *)data_rev, key_begin, iv);
+
+            if(check_crc16(data_rev, MAXBUF)){//data_rev
+                PRINTF("CRC_true\n");      
+                parse_64(data_rev, &receive);//data_rev
+                PRINTF("Data receive:\n");
+                PRINTF_DATA(&receive);
+                if(receive.cmd == REPLY_LED_ON){
+                    printf("__________Da bat relay !!!\n");
+
+                } else if (receive.cmd == REPLY_LED_OFF){
+                    printf("__________Da tat relay !!!\n");
+                }
+                
+            }
+            else PRINTF("CRC_fall\n");             
+        }
+    }
+
+    PRINTF("----------------------------------------------------------------\n\n");
+
+    shutdown(sock, 2);
+    close(sock); 
+
+     // free memory
+    freeaddrinfo(psinfo);
+    psinfo = NULL;
 
     return 0; 
 }  
