@@ -16,9 +16,10 @@
 #include <stdint.h>
 
 enum port { // port
- 			BORDER_ROUTER_LISTEN_PORT 	= 3000,
- 			SERVER_LISTEN_PORT 			= 3000,
- 			SERVER_RELAY_LISTEN_PORT	= 3001,
+ 			BORDER_ROUTER_LISTEN_PORT 		= 3000,
+ 			SERVER_LISTEN_PORT 				= 3000,
+ 			BORDER_ROUTER_RELAY_LISTEN_PORT	= 3001,
+ 			SERVER_RELAY_LISTEN_PORT		= 3001,
 };
 
 enum state { // state

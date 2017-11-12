@@ -35,7 +35,10 @@ static uint16_t rx_count = 0;
 
 static struct uip_udp_conn *server_conn;
 static struct uip_udp_conn *server_conn_relay;
+
 static struct uip_udp_conn *ser2bor_conn;
+static struct uip_udp_conn *ser2bor_conn_relay;
+
 static char buf[MAX_LEN];
 static uint16_t len;
 
@@ -188,6 +191,12 @@ start_up(void)
                                 UIP_HTONS(BORDER_ROUTER_LISTEN_PORT), NULL);
   if(!ser2bor_conn) {
     PRINTF("udp_new ser2bor_conn error.\n");
+  }
+
+  ser2bor_conn_relay = udp_new(&border_router_ipaddr, \
+                                UIP_HTONS(BORDER_ROUTER_RELAY_LISTEN_PORT), NULL);
+  if(!ser2bor_conn) {
+    PRINTF("udp_new ser2bor_conn_relay error.\n");
   }
 
   state = STATE_BEGIN;
@@ -346,6 +355,11 @@ static void
 tcpip_normal_handler(void)
 {
   char data_decrypted[64];
+  uint8_t data[16];
+  uint8_t seq = 0;
+
+  memset(data, 0, 16);
+
   PRINTF("__tcpip_normal_handler_\n");
   if(uip_newdata() && uip_datalen() == MAX_LEN) {    
     len = uip_datalen();
@@ -367,10 +381,18 @@ tcpip_normal_handler(void)
       if(receive.cmd == REQUEST_LED_ON){
         printf("__________Yeu cau bat relay !!!\n");
         relay_on(RELAY_1);
+        prepare2send(&send, &my_ipaddr, &border_router_ipaddr, \
+                seq, STATE_NORMAL, REPLY_LED_ON, data); // <<<< sequence
       } else {
         printf("__________Yeu cau tat relay !!!\n");
         relay_off(RELAY_1);
+        prepare2send(&send, &my_ipaddr, &border_router_ipaddr, \
+                seq, STATE_NORMAL, REPLY_LED_OFF, data);
       }
+      encrypt_cbc((uint8_t *)&send, (uint8_t *)&send_encrypted, \
+              (const uint8_t *) key_begin, (uint8_t *)iv); // <<<< sequence
+
+      uip_udp_packet_send(ser2bor_conn_relay, &send_encrypted, MAX_LEN);
     }
     else PRINTF("CRC_fall\n");    
   }
