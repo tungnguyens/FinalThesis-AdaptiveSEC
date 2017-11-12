@@ -140,6 +140,7 @@ void process_begin(frame_struct_t *receive){
             node_alt.last_seq = receive->seq;
             //if(node_alt.connected == 'N' || node_alt.authenticated == 'Y'){
                 PRINTF("cmd = first time REQUEST_JOIN\n");
+                // bi clear stt
                 memset(&node_alt, 0, sizeof(node_t));
                 node_alt.emergency = 'N';            
                 node_alt.num_receive = 0;
@@ -280,6 +281,7 @@ void process_normal(frame_struct_t *receive)
     node_alt.last_seq = receive->seq;
     node_alt.emergency = 'N';
     memcpy(&node_alt.last_data_receive, receive, MAX_LEN);
+    PRINTF_PZEM(receive);
     node_alt.num_receive++;
 }
 
@@ -398,7 +400,7 @@ int main(void)
                         process_receive_data(&receive);
                         node_alt.timer = rawtime;
                         copy_node2node(&node_alt, &my_device[my_device_pos]);  
-                        PRINTF_DATA_NODE(&my_device[my_device_pos]);
+                        //PRINTF_DATA_NODE(&my_device[my_device_pos]);
                     }
                     else PRINTF("CRC_fall\n");             
                 }

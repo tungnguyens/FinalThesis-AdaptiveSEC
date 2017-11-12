@@ -12,6 +12,7 @@
 
 #include "test.h"
 #include "my-include.h"
+#include "PZEM004T.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -76,5 +77,7 @@ uint8_t check_my_device_list(uint8_t *device_ipaddr);
 bool check_seq(uint32_t new_seq,uint32_t old_seq);
 
 void PRINT_ALL();
+
+void PRINTF_PZEM();
 
 #endif /* UTIL_H_ */

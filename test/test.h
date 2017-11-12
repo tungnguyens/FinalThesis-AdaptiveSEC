@@ -25,15 +25,20 @@ enum state { // state
 };
 
 enum cmd { 	// begin cmd
-		REQUEST_JOIN 	= 1,
-		REQUEST_HASH	= 2,
-		REPLY_HASH		= 3,
-		JOIN_SUCCESS    = 4,
-		// normal cmd
-		SEND_NORMAL 	= 5,
-		// emergency cmd
-		SEND_EMERGENCY  = 6,
+			REQUEST_JOIN 		= 1,
+			REQUEST_HASH		= 2,
+			REPLY_HASH			= 3,
+			JOIN_SUCCESS    	= 4,
 
+			// normal cmd //////////
+			SEND_PZEM	 		= 5,
+			REQUEST_LED_ON 		= 6,
+			REPLY_LED_ON		= 7,
+			REQUEST_LED_OFF		= 8,
+			REPLY_LED_OFF		= 9,
+
+			// emergency cmd ///////
+			SEND_EMERGENCY  	= 10,
 };
 
 #define	SFD 					0x7E		/* Start of NCKH frame Delimitter */

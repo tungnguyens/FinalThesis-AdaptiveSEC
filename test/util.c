@@ -1,6 +1,7 @@
 #include "util.h"
 #include "aes.h"
 
+
 /*---------------------------------------------------------------------------*/
 unsigned short 
 gen_crc16(uint8_t *data_p, unsigned short length)
@@ -426,4 +427,46 @@ void PRINT_ALL()
     }
 
     printf("\n--- >>>>>>> PRR = %.0lf / %.0lf = %lf \n", total_rev, total_last_seq, total_rev/total_last_seq);
+}
+/*-----------------------------------------------------------------------------------*/
+void PRINTF_PZEM(frame_struct_t *frame)
+{
+    struct PZEM_t PZEM_data_t;
+    uint8_t j;
+
+    PRINTF("\npayload_data [HEX] :\n");
+    for (j =0 ; j < 16; j++){
+        PRINTF(" %.2x ", frame->payload_data[j]);
+
+    }
+    PRINTF("\n");
+
+    PZEM_data_t.addr[0] = frame->payload_data[1];
+    PZEM_data_t.addr[1] = frame->payload_data[2];
+    PZEM_data_t.addr[2] = frame->payload_data[3];
+    PZEM_data_t.addr[3] = frame->payload_data[4];
+
+    PZEM_data_t.power_alarm = frame->payload_data[5];
+    
+    PZEM_data_t.voltage_x10 = (uint16_t)frame->payload_data[6] | (uint16_t) (frame->payload_data[7] << 8);
+
+    PZEM_data_t.current_x100 =(uint16_t)frame->payload_data[8] | (uint16_t) (frame->payload_data[9] << 8);
+ 
+    PZEM_data_t.power = (uint16_t)frame->payload_data[10] | (uint16_t) (frame->payload_data[11] << 8);
+
+    PZEM_data_t.energy = 0;
+    PZEM_data_t.energy |= (uint32_t)frame->payload_data[12];
+    PZEM_data_t.energy |= ((uint32_t)frame->payload_data[13]) << 8;
+    PZEM_data_t.energy |= ((uint32_t)frame->payload_data[14]) << 16;
+    PZEM_data_t.energy |= ((uint32_t)frame->payload_data[15]) << 24;
+
+    PRINTF(" PZEM_data_t: \n");
+    PRINTF(" 1. Address: %d.%d.%d.%d\n", \
+        PZEM_data_t.addr[0], PZEM_data_t.addr[1], PZEM_data_t.addr[2], PZEM_data_t.addr[3]);
+    PRINTF(" 2. Power_alarm: %d kW\n", PZEM_data_t.power_alarm);
+    PRINTF(" 3. Voltage_x10: %d V\n", PZEM_data_t.voltage_x10);
+    PRINTF(" 4. Current_x100: %d A\n", PZEM_data_t.current_x100);
+    PRINTF(" 5. Power: %d W\n", PZEM_data_t.power);
+    PRINTF(" 6. Energy: %d Wh\n", PZEM_data_t.energy);
+    PRINTF("\n");
 }
