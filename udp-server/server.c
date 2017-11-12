@@ -19,17 +19,22 @@
 
 extern struct PZEM_t PZEM_data_t;
 static unsigned char rx[LEN_PZEM_RESP];
+static uint16_t rx_count = 0;
+//static uint16_t last_rx_count = 0;
 /*---------------------------------------------------------------------------*/
 #define TIMEOUT         1 * CLOCK_SECOND
-#define TIMEOUT_NORMAL  15 * CLOCK_SECOND
+#define TIMEOUT_NORMAL  5 * CLOCK_SECOND
 
 #define UIP_IP_BUF   ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 #define UIP_UDP_BUF  ((struct uip_udp_hdr *)&uip_buf[uip_l2_l3_hdr_len])
 
 #define MAX_PAYLOAD_LEN 120
+
+#define MAX_BUF         64
 /*---------------------------------------------------------------------------*/
 
 static struct uip_udp_conn *server_conn;
+static struct uip_udp_conn *server_conn_relay;
 static struct uip_udp_conn *ser2bor_conn;
 static char buf[MAX_LEN];
 static uint16_t len;
@@ -66,39 +71,31 @@ static uint8_t done = 0;
 
 /*---------------------------------------------------------------------------*/
 
+void relay_on(unsigned char relays);
+
+void relay_off(unsigned char relays);
+
 static void start_up(void);
 
 static void send2bor_begin(uint8_t begin_cmd);
 
 static void send2bor_normal(void);
+
+static void send2bor_emergency(void);
 //static void send2bor(void);
 
 static void tcpip_begin_handler(void); 
 
 static void timeout_normal_handler(void);
 
-void relay_on(unsigned char relays);
-
-void relay_off(unsigned char relays);
-
-// static void tcpip_normal_handler(void);               
+static void tcpip_normal_handler(void);               
 /*---------------------------------------------------------------------------*/
 
 /*---------------------------------------------------------------------------*/
 PROCESS(udp_server, "UDP SERVER");                                           //
 AUTOSTART_PROCESSES(&udp_server);                                            //
 /*---------------------------------------------------------------------------*/
-/*
-static void get_radio_parameter(void) {
-  rssi = lqi = 0;
-  rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-  PRINTF("RSSI = %d\n",rssi); 
-  lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
-  PRINTF("LQI = %d\n",lqi);
-  NETSTACK_RADIO.get_value(RADIO_PARAM_TXPOWER, &tx_pow);
-  PRINTF("TX power = %d\n", tx_pow);
-}
-*/
+
 /*---------------------------------------------------------------------------*/
 void 
 relay_on(unsigned char relays)
@@ -134,7 +131,9 @@ uart1_callback(unsigned char c)
     i=0;
     printf("\nrecv_from_PZEM\n");
     if(recv_from_PZEM(rx) == PZEM_OK_VALUE){
-      printf("ok\n");
+      rx_count ++;
+      printf("ok %d\n", rx_count);      
+
     }
     else {
       printf("fail\n");
@@ -167,6 +166,14 @@ start_up(void)
   }
   udp_bind(server_conn, UIP_HTONS(SERVER_LISTEN_PORT));
   PRINTF("Listen port: %d, TTL=%u\n", SERVER_LISTEN_PORT, server_conn->ttl);
+
+
+  server_conn_relay = udp_new(NULL, UIP_HTONS(0), NULL);
+  if(!server_conn_relay) {
+    PRINTF("udp_new server_conn_relay error.\n");
+  }
+  udp_bind(server_conn_relay, UIP_HTONS(SERVER_RELAY_LISTEN_PORT));
+  PRINTF("Listen port: %d, TTL=%u\n", SERVER_LISTEN_PORT, server_conn_relay->ttl);
 
 
   PRINTF("My IPV6 address: ");  
@@ -244,18 +251,26 @@ send2bor_normal(void)
   //uint8_t data_encrypted[16];
   PRINTF("__send2bor_normal_\n");
 
-  memcpy(&data[0], &key_normal[0], 16);
+  //memcpy(&data[0], &key_normal[0], 16);
+
+  pack_data_PZEM(&PZEM_data_t, data, 16);
   memset(&send, 0, sizeof(frame_struct_t));
 
   prepare2send(&send, &my_ipaddr, &border_router_ipaddr, \
-                frame_counter, STATE_NORMAL, SEND_NORMAL, data);//data_encrypted);
+                frame_counter, STATE_NORMAL, SEND_PZEM, data);//data_encrypted);
 
   encrypt_cbc((uint8_t *)&send, (uint8_t *)&send_encrypted, \
-              (const uint8_t *) key_normal, (uint8_t *)iv);
+              (const uint8_t *) key_normal, (uint8_t *)iv); 
 
   uip_udp_packet_send(ser2bor_conn, &send_encrypted, MAX_LEN);
 
   frame_counter ++;
+}
+/*---------------------------------------------------------------------------*/
+static void 
+send2bor_emergency(void){
+  PRINTF("__send2bor_emergency_\n");
+  PRINTF("*** Mat Dien toan mien Nam ***\n");
 }
 /*---------------------------------------------------------------------------*/
 /*
@@ -291,38 +306,14 @@ send2bor(void)
 static void
 tcpip_begin_handler(void)
 {
-  uint8_t i;
+  //uint8_t i;
   PRINTF("__tcpip_begin_handler_\n");
   memset(buf, 0, MAX_LEN);
   if(uip_newdata()) {
     len = uip_datalen();
     memcpy(buf, uip_appdata, MAX_LEN);
 
-    for(i= 0; i< uip_datalen(); i++){ 
-      //PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
-      buf[i] = (uint8_t) (buf[i]&0xff);
-    }
-
-    for(i=0; i<8; i++){
-      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
-    }
-    PRINTF("\r\n");
-    for(i=8; i<24; i++){
-      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
-    }
-    PRINTF("\r\n");
-    for(i=24; i<40; i++){
-      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
-    }
-    PRINTF("\r\n");
-    for(i=40; i<56; i++){
-      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
-    }
-    PRINTF("\r\n");
-    for(i=56; i<64; i++){
-      PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
-    }
-    PRINTF("\r\n");
+    print_64byte((uint8_t *)buf, len);
 
     AES128_ECB_decrypt((uint8_t*) &buf[8], (const uint8_t*) key_begin, \
                                 (uint8_t *) &buf[8]);
@@ -354,7 +345,35 @@ tcpip_begin_handler(void)
 static void
 tcpip_normal_handler(void)
 {
+  char data_decrypted[64];
   PRINTF("__tcpip_normal_handler_\n");
+  if(uip_newdata() && uip_datalen() == MAX_LEN) {    
+    len = uip_datalen();
+    memcpy(buf, uip_appdata, MAX_LEN);
+
+    //print_64byte((uint8_t *)buf, len);
+
+    decrypt_cbc((uint8_t *) &buf[0], (uint8_t *)data_decrypted, \
+              (const uint8_t *) key_begin, (uint8_t *)iv); // <<< Key begin
+
+    print_64byte((uint8_t *)data_decrypted, len);
+
+    if(check_crc16((uint8_t *) data_decrypted, MAX_LEN)){//data_rev
+      PRINTF("CRC_true\n");      
+      parse_64((uint8_t *) data_decrypted, &receive);//data_rev
+      PRINTF("Data receive:\n");
+      PRINTF_DATA(&receive);
+      //PRINTF_DATA_NODE(&my_device[my_device_pos]);
+      if(receive.cmd == REQUEST_LED_ON){
+        printf("__________Yeu cau bat relay !!!\n");
+        relay_on(RELAY_1);
+      } else {
+        printf("__________Yeu cau tat relay !!!\n");
+        relay_off(RELAY_1);
+      }
+    }
+    else PRINTF("CRC_fall\n");    
+  }
 
 }
 /*---------------------------------------------------------------------------*/
@@ -362,21 +381,24 @@ static void timeout_normal_handler(void)
 {
   PRINTF("__timeout_normal_handler_\n");
   static uint8_t count = 1;
-  uint8_t i;
+  //uint8_t i;
+
   printf(" PZEM_data_t: \n");
-  printf(" 1. Address: %d.%d.%d.%d\n", \
-     PZEM_data_t.addr[0], PZEM_data_t.addr[1], PZEM_data_t.addr[2], PZEM_data_t.addr[3]);
-  printf(" 2. Power_alarm: %d kW\n", PZEM_data_t.power_alarm);
-  printf(" 3. Voltage_x10: %d V\n", PZEM_data_t.voltage_x10);
-  printf(" 4. Current_x100: %d A\n", PZEM_data_t.current_x100);
-  printf(" 5. Power: %d W\n", PZEM_data_t.power);
-  printf(" 6. Energy: %ld Wh\n", PZEM_data_t.energy);
-  printf(" 7. Last_data_recv: ");
-  for(i=0; i<7; i++){
-   printf("0x%02x ",PZEM_data_t.last_data_recv[i]); 
-  }
+  // printf(" 1. Address: %d.%d.%d.%d\n", PZEM_data_t.addr[0], PZEM_data_t.addr[1], PZEM_data_t.addr[2], PZEM_data_t.addr[3]);
+  // printf(" 2. Power_alarm: %d kW\n", PZEM_data_t.power_alarm);
+  // printf(" 3. Voltage_x10: %d V\n", PZEM_data_t.voltage_x10);
+  // printf(" 4. Current_x100: %d A\n", PZEM_data_t.current_x100);
+  // printf(" 5. Power: %d W\n", PZEM_data_t.power);
+  // printf(" 6. Energy: %ld Wh\n", PZEM_data_t.energy);
+  // printf(" 7. Last_data_recv: ");
+  // for(i=0; i<7; i++){
+  //  printf("0x%02x ",PZEM_data_t.last_data_recv[i]); 
+  // }
+  // printf("\n");
+
   switch(count){
     case 1:
+      rx_count = 0;
       send_to_PZEM(PZEM_SET_ADDRESS);
       count = 2;
       break;
@@ -398,8 +420,16 @@ static void timeout_normal_handler(void)
       break;
     case 6:
       send_to_PZEM(PZEM_ENERGY);
-      count = 1;
+      count = 7;
       break;
+    case 7:
+      if(rx_count == 6){
+        send2bor_normal();
+      }
+      else {
+        send2bor_emergency();
+      }
+      count = 1;
     default:
       //return PZEM_ERROR_VALUE;
       break;
@@ -479,26 +509,26 @@ PROCESS_THREAD(udp_server, ev, data)                                         //
         printf("%02x ", key_normal[i]);
       }
       printf("\n");
-      send2bor_normal();
+      //send2bor_normal();
       timeout_normal_handler();
 
 
 
       /////////////////////////////////////
-      if(relay_count%2 == 0){
-        printf("bat 2 relay\n");
-        relay_on(RELAY_1);
-      //   my_leds_off(RELAY_2);
-      //   my_leds_off(RELAY_3);
-      //   my_leds_off(RELAY_4);
-      }
-      else{
-        printf("tat 2 relay\n");
-        relay_off(RELAY_1);
-      //   my_leds_on(RELAY_2);
-      //   my_leds_on(RELAY_3);
-      //   my_leds_on(RELAY_4);
-      }
+      // if(relay_count%2 == 0){
+      //   printf("bat 2 relay\n");
+      //   relay_on(RELAY_1);
+      // //   my_leds_off(RELAY_2);
+      // //   my_leds_off(RELAY_3);
+      // //   my_leds_off(RELAY_4);
+      // }
+      // else{
+      //   printf("tat 2 relay\n");
+      //   relay_off(RELAY_1);
+      // //   my_leds_on(RELAY_2);
+      // //   my_leds_on(RELAY_3);
+      // //   my_leds_on(RELAY_4);
+      // }
       relay_count++;
       ////////////////////////////////////
     }

@@ -204,3 +204,104 @@ uart1_send_bytes(const unsigned  char *s, unsigned int len) {
   }   
   return 1;
 }
+/*--------------------------------------------------------------------------------*/ 
+void 
+pack_data_PZEM(struct PZEM_t *PZEM_t_p, uint8_t *data, unsigned int len){
+  data[0] = 0xFF;
+  // Address 4byte
+  data[1] = PZEM_t_p->addr[0];
+  data[2] = PZEM_t_p->addr[1];
+  data[3] = PZEM_t_p->addr[2];
+  data[4] = PZEM_t_p->addr[3];
+  // Power Alarm 1byte
+  data[5] = PZEM_t_p->power_alarm;
+  // voltage_x10 2byte
+  data[6] = (uint8_t) (PZEM_t_p->voltage_x10 & 0x00FF);
+  data[7] = (uint8_t) ((PZEM_t_p->voltage_x10 >> 8) & 0x00FF);
+  // current_x100 2byte
+  data[8] = (uint8_t) (PZEM_t_p->current_x100 & 0x00FF);
+  data[9] = (uint8_t) ((PZEM_t_p->current_x100 >> 8) & 0x00FF);
+  // current_x100 2byte
+  data[10] = (uint8_t) (PZEM_t_p->power & 0x00FF);
+  data[11] = (uint8_t) ((PZEM_t_p->power >> 8) & 0x00FF);
+  // energy 4byte
+  data[12] = (uint8_t) (PZEM_t_p->energy & 0x000000FF);
+  data[13] = (uint8_t) ((PZEM_t_p->energy >> 8) & 0x000000FF);
+  data[14] = (uint8_t) ((PZEM_t_p->energy >> 16) & 0x000000FF);
+  data[15] = (uint8_t) ((PZEM_t_p->energy >> 24) & 0x000000FF);
+}
+
+void 
+print_64byte(uint8_t *buf, uint8_t len)
+{
+  uint8_t i;
+  for(i= 0; i< len; i++){ 
+    //PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+    buf[i] = (uint8_t) (buf[i]&0xff);
+  }
+
+  for(i=0; i<8; i++){
+    PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+  }
+  PRINTF("\r\n");
+  for(i=8; i<24; i++){
+    PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+  }
+  PRINTF("\r\n");
+  for(i=24; i<40; i++){
+    PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+  }
+  PRINTF("\r\n");
+  for(i=40; i<56; i++){
+    PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+  }
+  PRINTF("\r\n");
+  for(i=56; i<64; i++){
+    PRINTF("%02x ", (uint8_t) (buf[i]&0xff));
+  }
+  PRINTF("\r\n");
+}
+/*--------------------------------------------------------------------------------*/ 
+#if DEBUG==1
+void 
+PRINTF_DATA(frame_struct_t *frame){ 
+  int j;
+  
+  PRINTF("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
+
+  PRINTF("FLAG = 0x%.2x\n", frame->sfd);
+  PRINTF("len = %d\n", frame->len);
+  PRINTF("seq = %ld\n", frame->seq);
+  PRINTF("state = 0x%.2x\n", frame->state);
+  PRINTF("cmd = 0x%.2x\n", frame->cmd);
+
+  PRINTF("\npayload_data [HEX] :\n");
+  for (j =0 ; j < 16; j++){
+    PRINTF(" %.2x ", frame->payload_data[j]);
+
+  }
+
+  PRINTF("\nipv6_source_addr [HEX] :\n");
+  for (j =0 ; j < 16; j++){
+    PRINTF(" %.2x ", frame->ipv6_source_addr[j]);
+  }
+
+  PRINTF("\nipv6_dest_addr [HEX] :\n");
+  for (j =0 ; j < 16; j++){
+    PRINTF(" %.2x ", frame->ipv6_dest_addr[j]);
+  }
+
+  PRINTF("\nfor_future [HEX] :\n");
+  for (j =0 ; j < 6; j++){
+    PRINTF(" %.2x ", frame->for_future[j]);
+  }
+
+  PRINTF("\ncrc16 = 0x%.4x\n", frame->crc);
+    PRINTF("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n");
+}
+#else /* DEBUG */
+void 
+PRINTF_DATA(frame_struct_t *frame){
+  ;
+}
+#endif /* DEBUG */    

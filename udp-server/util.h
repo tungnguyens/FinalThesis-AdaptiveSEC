@@ -14,6 +14,7 @@
 #include "my-include.h"
 #include "server.h"
 #include "tiny_aes.h"
+#include "PZEM004T.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -53,4 +54,9 @@ uint16_t hash(uint16_t a);
 
 unsigned int uart0_send_bytes(const unsigned  char *s, unsigned int len);
 unsigned int uart1_send_bytes(const unsigned  char *s, unsigned int len);
+
+void pack_data_PZEM(struct PZEM_t *PZEM_t_p, uint8_t *data, unsigned int len);
+
+void print_64byte(uint8_t *buf, uint8_t len);
+void PRINTF_DATA(frame_struct_t *frame);
 #endif /* UTIL_H_ */
